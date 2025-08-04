@@ -28,7 +28,7 @@ public class ConnectionPool {
             System.out.println("No connection is available, please wait");
             wait();
         }
-        Connection connection = availableConnections.remove(0); // исправлено для List
+        Connection connection = availableConnections.remove(0);
         usedConnections.add(connection);
         System.out.println("Connection's received " + connection.getId());
         return connection;
