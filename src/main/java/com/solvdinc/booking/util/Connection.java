@@ -1,8 +1,5 @@
 package com.solvdinc.booking.util;
 
-import java.util.ArrayList;
-import java.util.List;
-
 public class Connection {
 
     private final int id;
@@ -17,5 +14,18 @@ public class Connection {
 
     public int getId() {
         return id;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof Connection)) return false;
+        Connection other = (Connection) o;
+        return id == other.id;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(id);
     }
 }
