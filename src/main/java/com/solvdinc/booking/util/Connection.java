@@ -19,8 +19,7 @@ public class Connection {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Connection)) return false;
-        Connection other = (Connection) o;
+        if (!(o instanceof Connection other)) return false;
         return id == other.id;
     }
 

@@ -1,70 +1,58 @@
 package com.solvdinc.booking.util;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 
 public class ConnectionPool {
     private static final int MAX_CONNECTIONS = 10;
-    private final List<Connection> availableConnections = new ArrayList<>();
-    private final List<Connection> usedConnections = new ArrayList<>();
+    private final BlockingQueue<Connection> availableConnections;
 
-    private static ConnectionPool instance;
+    private static volatile ConnectionPool instance;
 
     private ConnectionPool() {
-        for (int i = 1; i <= MAX_CONNECTIONS; i++) {
-            availableConnections.add(new Connection(i));
+        availableConnections = new ArrayBlockingQueue<>(MAX_CONNECTIONS);
+        try {
+            for (int i = 1; i <= MAX_CONNECTIONS; i++) {
+                availableConnections.put(new Connection(i));
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Initialization interrupted", e);
         }
     }
 
-    public static synchronized ConnectionPool getInstance() {
+    public static ConnectionPool getInstance() {
         if (instance == null) {
-            instance = new ConnectionPool();
+            synchronized (ConnectionPool.class) {
+                if (instance == null) {
+                    instance = new ConnectionPool();
+                }
+            }
         }
         return instance;
     }
 
-    public synchronized Connection getConnection() throws InterruptedException {
-        while (availableConnections.isEmpty()) {
-            System.out.println("No connection is available, please wait");
-            wait();
-        }
-        Connection connection = availableConnections.remove(0);
-        usedConnections.add(connection);
-        System.out.println("Connection's received " + connection.getId());
+    public Connection getConnection() throws InterruptedException {
+        Connection connection = availableConnections.take();
+        System.out.println("Connection received " + connection.getId() +
+                " | Available now: " + getAvailableConnectionsCount());
         return connection;
     }
 
-    public synchronized void releaseConnection(Connection connection) {
-        if (connection == null) {
-            return;
-        }
-        if (usedConnections.remove(connection)) {
-            availableConnections.add(connection);
-            System.out.println("Connection's avaliable " + connection.getId());
-            notifyAll();
+    public void releaseConnection(Connection connection) {
+        if (connection != null) {
+            try {
+                availableConnections.put(connection);
+                System.out.println("Connection released " + connection.getId() +
+                        " | Available now: " + getAvailableConnectionsCount());
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                System.err.println("Failed to release connection: " + e.getMessage());
+            }
         }
     }
 
-    public static void main(String[] args) {
-        ConnectionPool pool = ConnectionPool.getInstance();
-
-        for (int i = 1; i <= 11; i++) {
-            final int taskId = i;
-            new Thread(() -> {
-                Connection conn = null;
-                try {
-                    conn = pool.getConnection();
-                    conn.execute("SELECT * FROM table_" + taskId);
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    e.printStackTrace();
-                } finally {
-                    if (conn != null) {
-                        pool.releaseConnection(conn);
-                    }
-                }
-            }).start();
-        }
+    public int getAvailableConnectionsCount() {
+        return availableConnections.size();
     }
 }

@@ -2,7 +2,7 @@ package com.solvdinc.booking.model;
 
 public enum BookingStatus {
 
-	PENDING, CONFIRMED, CANCELLED, COMPLETED;
+				PENDING, CONFIRMED, CANCELLED, COMPLETED;
 
 	public String nextStep() {
 		switch (this) {
